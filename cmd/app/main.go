@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/zavista/go-job-queue/internal/jobs"
 	"github.com/zavista/go-job-queue/internal/processors"
@@ -29,7 +28,8 @@ func main() {
 		Subject: "this will fail",
 	})
 
-	time.Sleep(10 * time.Second)
+	manager.CloseQueue()
+	workerPool.Wait()
 
 	fmt.Println()
 	fmt.Println("final snapshots:")

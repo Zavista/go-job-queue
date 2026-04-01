@@ -75,3 +75,7 @@ func (m *Manager) ListJobs() []*Job {
 func (m *Manager) Logger() *log.Logger {
 	return m.logger
 }
+
+func (m *Manager) CloseQueue() {
+	close(m.jobQueue)
+}
