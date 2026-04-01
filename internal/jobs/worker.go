@@ -1,6 +1,9 @@
 package jobs
 
-import "sync"
+import (
+	"fmt"
+	"sync"
+)
 
 type WorkerPool struct {
 	numWorkers int
@@ -17,35 +20,37 @@ func NewWorkerPool(numWorkers int, manager *Manager) *WorkerPool {
 
 func (wp *WorkerPool) Start() {
 	for i := 0; i < wp.numWorkers; i++ {
+		workerID := i + 1
 		wp.wg.Add(1)
 
-		go func() { // each worker will read from job queue and process a job
+		go func(id int) { // each worker will be a goroutine
 			defer wp.wg.Done()
+			wp.manager.logger.Printf("worker %d started", id)
 
 			for job := range wp.manager.jobQueue { // infinite loop waiting for job, worker will keep pulling/executing jobs until queue is closed
-				wp.processJob(job)
+				wp.manager.logger.Printf("worker %d picked up job %d (%s)", id, job.ID, job.Name)
+				wp.processJob(id, job)
 			}
-		}()
+
+			wp.manager.logger.Printf("worker %d stopped", id)
+		}(workerID)
 	}
 }
 
-func (wp *WorkerPool) processJob(job *Job) {
-	job.mu.Lock()
-	job.Status = Running
-	job.Attempts++
-	job.mu.Unlock()
+func (wp *WorkerPool) processJob(workerID int, job *Job) {
+	job.MarkRunning(wp.manager.logger)
 
-	result, err := job.Payload.Process() // unlock since Process() can be slow work
-
-	job.mu.Lock()
-	defer job.mu.Unlock()
+	result, err := job.Payload.Process()
 
 	if err != nil {
-		job.Status = Failed
-		job.Err = err
+		wrappedErr := fmt.Errorf("worker %d failed processing job %d: %w", workerID, job.ID, err)
+		job.MarkFailed(wrappedErr, wp.manager.logger)
 		return
 	}
 
-	job.Status = Success
-	job.Result = result
+	job.MarkSuccess(result, wp.manager.logger)
+}
+
+func (wp *WorkerPool) Wait() {
+	wp.wg.Wait()
 }
