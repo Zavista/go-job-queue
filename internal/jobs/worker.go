@@ -29,47 +29,16 @@ func (wp *WorkerPool) Start() {
 	}
 }
 
-package jobs
-
-import "sync"
-
-type WorkerPool struct {
-	numWorkers int
-	manager    *Manager
-	wg         sync.WaitGroup
-}
-
-func NewWorkerPool(numWorkers int, manager *Manager) *WorkerPool {
-	return &WorkerPool{
-		numWorkers: numWorkers,
-		manager:    manager,
-	}
-}
-
-func (wp *WorkerPool) Start() {
-	for i := 0; i < wp.numWorkers; i++ {
-		wp.wg.Add(1)
-
-		go func() {
-			defer wp.wg.Done()
-
-			for job := range wp.manager.jobQueue {
-				wp.processJob(job)
-			}
-		}()
-	}
-}
-
 func (wp *WorkerPool) processJob(job *Job) {
-	wp.manager.mu.Lock()
+	job.mu.Lock()
 	job.Status = Running
 	job.Attempts++
-	wp.manager.mu.Unlock()
+	job.mu.Unlock()
 
-	result, err := job.Payload.Process()
+	result, err := job.Payload.Process() // unlock since Process() can be slow work
 
-	wp.manager.mu.Lock()
-	defer wp.manager.mu.Unlock()
+	job.mu.Lock()
+	defer job.mu.Unlock()
 
 	if err != nil {
 		job.Status = Failed

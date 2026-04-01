@@ -1,8 +1,13 @@
 package jobs
 
-import "github.com/zavista/go-job-queue/internal/processors"
+import (
+	"sync"
+
+	"github.com/zavista/go-job-queue/internal/processors"
+)
 
 type Job struct {
+	mu       sync.Mutex
 	ID       int
 	Name     string
 	Status   JobStatus
