@@ -14,24 +14,36 @@ func main() {
 
 	workerPool.Start()
 
-	job := manager.AddJob(processors.EmailJob{
-		To:      "test@example.com",
+	job1 := manager.AddJob(processors.EmailJob{
+		To:      "a@test.com",
 		Subject: "welcome",
 	})
 
-	fmt.Println("added job:", job.ID, job.Name, job.Status)
+	job2 := manager.AddJob(processors.EmailJob{
+		To:      "b@test.com",
+		Subject: "hello",
+	})
 
-	time.Sleep(3 * time.Second)
+	job3 := manager.AddJob(processors.EmailJob{
+		To:      "",
+		Subject: "this will fail",
+	})
 
-	fmt.Println("final job state:")
-	fmt.Println("id:", job.ID)
-	fmt.Println("name:", job.Name)
-	fmt.Println("status:", job.Status)
-	fmt.Println("attempts:", job.Attempts)
-	fmt.Println("result:", job.Result)
+	time.Sleep(10 * time.Second)
 
-	if job.Err != nil {
-		fmt.Println("error:", job.Err)
+	fmt.Println()
+	fmt.Println("final snapshots:")
+
+	for _, job := range []*jobs.Job{job1, job2, job3} {
+		snapshot := job.Snapshot()
+		fmt.Printf(
+			"job=%d name=%s status=%s attempts=%d result=%q err=%v\n",
+			snapshot.ID,
+			snapshot.Name,
+			snapshot.Status,
+			snapshot.Attempts,
+			snapshot.Result,
+			snapshot.Err,
+		)
 	}
-
 }
